@@ -5,10 +5,20 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>in.hauu</groupId>
-    <artifactId>darkdiary</artifactId>
+    <artifactId>darkdiary-exporter</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <build>
+        <sourceDirectory>src/main/java</sourceDirectory>
+        <resources>
+            <resource>
+                <directory>src</directory>
+                <excludes>
+                    <exclude>**/*.java</exclude>
+                </excludes>
+            </resource>
+        </resources>
+        <finalName>darkdiary-exporter</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -18,6 +28,30 @@
                     <source>13</source>
                     <target>13</target>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <archive>
+                        <manifest>
+                            <mainClass>in.hauu.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>assemble-all</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -32,15 +66,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <archive>
-                        <manifestFile>src/main/resources/Manifest.txt</manifestFile>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-
-                            <mainClass>com.footballradar.jpademo.App</mainClass>
-
-                        </manifest>
-                    </archive>
+                    <excludes>**/private/*</excludes>
                 </configuration>
             </plugin>
         </plugins>

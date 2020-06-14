@@ -1,4 +1,4 @@
 package in.hauu.diary;
 
-class Comment {
+public class Comment {
 }

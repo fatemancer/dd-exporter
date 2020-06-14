@@ -19,9 +19,8 @@ public class Template {
         try {
             TEMPLATE_ARTICLE = new String(Files.readAllBytes(Path.of("src/main/resources/template.html")));
             TEMPLATE_HEAD = new String(Files.readAllBytes(Path.of("src/main/resources/head.html")));
-
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("No template files loaded", e);
         }
     }
 
@@ -31,7 +30,7 @@ public class Template {
         String contents;
 
         // ugly af, but who cares with current load
-        contents = String.format(TEMPLATE_HEAD, diary.getPages().stream().flatMap(p -> p.getRecords().stream()).map(r ->
+        contents = String.format(TEMPLATE_HEAD, diary.getFlatRecords().map(r ->
                 MessageFormat.format(
                         TEMPLATE_ARTICLE,
                         r.getDateTime(),
@@ -42,5 +41,9 @@ public class Template {
                 )).collect(Collectors.joining()));
 
         Files.write(Path.of("src/main/resources/private" + login + ".html"), contents.getBytes(), StandardOpenOption.CREATE);
+    }
+
+    public static void checkIfExists() {
+        // static must fire and successfully load resources
     }
 }

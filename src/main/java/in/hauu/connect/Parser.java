@@ -1,8 +1,10 @@
 package in.hauu.connect;
 
 import in.hauu.converter.Converter;
+import in.hauu.diary.Comment;
 import in.hauu.diary.Diary;
 import in.hauu.diary.Page;
+import in.hauu.diary.Record;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
@@ -37,5 +39,10 @@ public class Parser {
             log.error(String.format("Unable to get latest page from link, check page %s", link));
             throw new RuntimeException(e);
         }
+    }
+
+    public void injectComments(Record r, String commentsBlock) {
+        List<Comment> mutableComments = r.getComments();
+        mutableComments.addAll(converter.responseToComments(commentsBlock));
     }
 }
