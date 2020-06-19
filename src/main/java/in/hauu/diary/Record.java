@@ -20,7 +20,7 @@ public class Record {
     private final String mood;
     private final String music;
     private Enrichment enrichment = Enrichment.UNKNOWN;
-    //private final String privacyLevel;
+    private final String tags;
 
     List<Comment> comments = new ArrayList<>();
 
@@ -31,22 +31,24 @@ public class Record {
         text = dto.getText();
         music = dto.getMusic();
         mood = dto.getMood();
+        tags = dto.getTags();
         int commentsNumber = Integer.parseInt(dto.getCommentsNumber());
         if (commentsNumber == 0) {
             enrichment = Enrichment.NOT_NEEDED;
-        } else if (comments.size() == 0) {
+        } else  {
             enrichment = Enrichment.NEEDED;
-        } else {
-            enrichment = Enrichment.ENRICHED;
         }
-        //privacyLevel = dto.getPrivacy();
+    }
+
+    public Record setEnrichment(Enrichment enrichment) {
+        this.enrichment = enrichment;
+        return this;
     }
 
     public enum Enrichment {
         UNKNOWN,
         NOT_NEEDED,
         NEEDED,
-        ENRICHED
     }
 
 }

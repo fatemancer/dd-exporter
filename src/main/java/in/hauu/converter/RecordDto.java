@@ -14,6 +14,5 @@ public class RecordDto {
     String music;
     String mood;
     String commentsNumber;
-    // todo
-    // List<CommentDto> comments;
+    String tags;
 }

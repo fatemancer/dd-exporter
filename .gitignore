@@ -1,3 +1,4 @@
 /src/main/resources/private/*
 /src/main/java/in/hauu/connect/MockConnector.java
 /target/*
+/src/main/resources/private*

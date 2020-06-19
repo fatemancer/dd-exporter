@@ -12,6 +12,7 @@ import org.jsoup.select.Elements;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class Converter {
@@ -45,13 +46,11 @@ public class Converter {
         String music = extractExtra(element, "Музыка");
         String mood = extractExtra(element, "Состояние");
         String tags = extractExtra(element, "Теги");
-        log.info(tags);
         String eid = extractEid(element);
         String commentNumber = extractComments(element);
         var dto = new RecordDto(
-                eid, time, header, text, privacy, music, mood, commentNumber
+                eid, time, header, text, privacy, music, mood, commentNumber, tags
         );
-        log.info(dto.toString());
         return new Record(dto);
     }
 
@@ -83,7 +82,7 @@ public class Converter {
                 return div.html().split("/strong>")[1];
             }
         }
-        return "нет";
+        return null;
     }
 
     private String extractTitle(Elements titleAndLink) {
@@ -95,11 +94,24 @@ public class Converter {
     }
 
     public Collection<Comment> responseToComments(String commentsBlock) {
-        return null;
+        Document document = Jsoup.parse(commentsBlock);
+        Elements htmlComments = document.body()
+                .getElementsByClass("layout-wrapper")
+                .get(0)
+                .getElementsByClass("layout-main")
+                .get(0)
+                .getElementsByClass("commentsSection")
+                .get(0)
+                .getElementsByClass("comment");
+
+        List<Comment> comments = htmlComments.stream().map(this::parseComment).collect(Collectors.toList());
+        return comments;
     }
 
-    private static class CommentDto {
-        String author;
-        String comment;
+    private Comment parseComment(Element hc) {
+        String author = hc.getElementsByClass("author").text();
+        String content = hc.getElementsByClass("content").text();
+        boolean isPersonal = hc.getElementsByAttributeValue("title", "Такой коммент видят только автор записи и автор коммента").size() == 1;
+        return new Comment(author, content, isPersonal);
     }
 }

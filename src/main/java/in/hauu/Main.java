@@ -3,16 +3,16 @@ package in.hauu;
 import in.hauu.connect.Connector;
 import in.hauu.connect.ConnectorImpl;
 import in.hauu.connect.MockConnector;
-import in.hauu.connect.Parser;
 import in.hauu.diary.Diary;
-import in.hauu.writer.Template;
+import in.hauu.writer.DiaryWriter;
+import in.hauu.writer.Formatter;
+import in.hauu.writer.UserFileSystem;
 import lombok.SneakyThrows;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 class Main {
@@ -20,14 +20,14 @@ class Main {
     private static final Map<String, String> params = new HashMap<>();
 
     public static void main(String[] args) throws IOException, InterruptedException {
-
-        Template.checkIfExists();
+        UserFileSystem.init();
+        Formatter.checkIfExists();
         Connector connector = provideConnector(args);
-        List<String> pages = connector.connectTo(params.get("login"), params.get("password"));
-        Diary contents = new Parser().parse(params.get("login"), pages);
+        Diary contents  = connector.retrieveDiary(params.get("login"), params.get("password"));
         // no need to check each record... only enriching those with comments > 0
         connector.enrich(contents);
-        Template.writeDiary(params.get("login"), contents);
+        DiaryWriter diaryWriter = new DiaryWriter();
+        diaryWriter.writeDiary(contents);
     }
 
     @SneakyThrows

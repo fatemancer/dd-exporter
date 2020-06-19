@@ -22,14 +22,15 @@ import java.util.Map;
 public class ConnectorImpl implements Connector {
 
     private static final String PAGE_TEMPLATE = "http://darkdiary.ru/users/%s?page=%s";
-    private static final String RECORD_TEMPLATE = "http://darkdiary.ru/users/%s/%scomment/";
+    private static final String RECORD_TEMPLATE = "http://darkdiary.ru/users/%s/%s/comment/";
     private static final String HOST = "http://darkdiary.ru";
     private static final String LOGIN_API = HOST + "/auth/login";
 
     private static final Map<String, HttpClient> cachedHttpClient = new HashMap<>();
+    private static final Map<String, String> cachedPostData = new HashMap<>();
 
     @Override
-    public List<String> connectTo(String user, String password) throws IOException, InterruptedException {
+    public Diary retrieveDiary(String user, String password) throws IOException, InterruptedException {
         HttpClient client = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -47,19 +48,20 @@ public class ConnectorImpl implements Connector {
         HttpResponse<String> send = client.send(build, this::firstHandle);
         cachedHttpClient.put(user, client);
 
-        int lastIndex = getLastIndex(retrievePages(user, 2, client).get(0), String.format(PAGE_TEMPLATE, user, 1));
-        log.info("Last index: {}, but 5 for now", lastIndex);
+        Parser parser = new Parser();
+        HashMap<String, String> meta = parser.getMeta(retrievePages(user, 2, client).get(0));
+        int lastIndex = Integer.parseInt(meta.getOrDefault("lastDiaryIndex", "0"));
         lastIndex = 5;
-        return retrievePages(user, lastIndex, client);
-    }
-
-    private int getLastIndex(String s, String link) {
-        return new Parser().getLastDiaryIndex(s, link);
+        log.info("Last index: {}", lastIndex);
+        return parser.parse(user, meta, retrievePages(user, lastIndex, client));
     }
 
     private List<String> retrievePages(String user, int lastPage, HttpClient client) {
         var strings = new ArrayList<String>();
-        for (int i = 1; i < lastPage; i++) {
+        ProgressBar bar = new ProgressBar("Выкачиваем страницы", lastPage);
+        for (int i = 1; i <= lastPage; i++) {
+            bar.next();
+            bar.show();
             String url = String.format(PAGE_TEMPLATE, user, i);
             int retries = 0;
             try {
@@ -97,9 +99,15 @@ public class ConnectorImpl implements Connector {
     @Override
     public void enrich(Diary diary) {
         var cachedClient = cachedHttpClient.get(diary.getLogin());
+        long recsNeedEnrichment = diary.getFlatRecords()
+                .filter(r -> r.getEnrichment() == Record.Enrichment.NEEDED)
+                .count();
+        ProgressBar bar = new ProgressBar("Выкачиваем комменты", (int) recsNeedEnrichment);
         diary.getFlatRecords()
                 .filter(r -> r.getEnrichment() == Record.Enrichment.NEEDED)
                 .forEach(r -> {
+                            bar.next();
+                            bar.show();
                             String recordUrl = String.format(RECORD_TEMPLATE, diary.getLogin(), r.getEid());
                             String commentsBlock = retrieveCommentsBlock(recordUrl, r.getEid(), cachedClient);
                             new Parser().injectComments(r, commentsBlock);
@@ -111,7 +119,7 @@ public class ConnectorImpl implements Connector {
         try {
             HttpResponse<String> send = client.send(getRequest(url), (r) -> handle(r, curIndex, retry));
             strings.add(send.body());
-            Thread.sleep(1500);
+            Thread.sleep(800);
         } catch (IOException | InterruptedException e) {
             log.error("Error, will retry if possible: ", e);
         }
@@ -123,11 +131,13 @@ public class ConnectorImpl implements Connector {
     }
 
     private HttpResponse.BodySubscriber<String> firstHandle(HttpResponse.ResponseInfo responseInfo) {
-        log.info(String.format(
-                "Code: %s, injected cookies: %s",
-                responseInfo.statusCode(),
-                responseInfo.headers().firstValue("set-cookie")
-        ));
+        if (responseInfo.statusCode() != 200) {
+            log.info(String.format(
+                    "Code: %s, injected cookies: %s",
+                    responseInfo.statusCode(),
+                    responseInfo.headers().firstValue("set-cookie")
+            ));
+        }
         return HttpResponse.BodySubscribers.ofString(Charset.defaultCharset());
     }
 
@@ -136,7 +146,9 @@ public class ConnectorImpl implements Connector {
             int curIndex,
             int retry
     ) {
-        log.info(String.format("Code %s, page %s, iteration %s", responseInfo.statusCode(), curIndex, retry));
+        if (responseInfo.statusCode() != 200) {
+            log.info(String.format("Code %s, page %s, iteration %s", responseInfo.statusCode(), curIndex, retry));
+        }
         return HttpResponse.BodySubscribers.ofString(Charset.defaultCharset());
     }
 

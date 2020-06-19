@@ -305,6 +305,7 @@ td { vertical-align: top; }
   h2, h3 { page-break-after: avoid; }
 }
 
+
     </style>
     <style media="all" data-href="/css/layout.css?1446598330">.layout-wrapper {
   display: -webkit-box;
@@ -389,6 +390,7 @@ td { vertical-align: top; }
 body {
   padding-top: 70px;
 }
+
 
 
     </style>
@@ -1240,15 +1242,26 @@ a.b-share__link {
 .autocomplete-group { padding: 2px 5px; }
 .autocomplete-group strong { display: block; border-bottom: 1px solid #000; }
 
+
     </style>
 
 
     <!-- Journal styles -->
 
     <style media="all">body{
-	background-color: #e4bd04;
+	background-color: #d3d3d3;
 	background-image: none;
 }
+
+summary{
+	font-family: "Georgia","Times New Roman",Times,serif;
+	font-size: 140%% ;
+}
+
+.comment{
+    padding: 10px;
+}
+
 /*
  * Block
  */
@@ -1257,8 +1270,8 @@ a.b-share__link {
 	border-style: solid;
 	border-width: 1px;
 	/* border: 1px solid #DDDDCC; */
-	background: #e4bd04;
-	color: #000000;
+	background: %s;
+	color: %s;
 	/* background-color: rgba(159,170,170,1); */
 }
 .block a, .block a:HOVER, .block a:VISITED {
@@ -1268,25 +1281,22 @@ a.b-share__link {
 }
 div#PADDER {
 }
-.layout-header {
-	/* LOGO */
-	display: block;
-	background-image: url("http://darkdiary.ru/user_data/home/bf/8831/journal/5749/logo.gif") !important;
-	background-position: top left !important;
-	height: 300px;
-	min-height: 300px;
-	background-repeat: no-repeat !important;
-	background-color: #e4bd04 !important;
-	/* NO LOGO */
-}
 /*
  * Links
  */
 a:focus, a:hover {color: #8a1f11; text-decoration: underline;}
 a, a:visited {color: #660000;text-decoration:none;}
+
     </style>
 
 
+    <script>function openAll() {
+    var x = document.getElementsByTagName("details");
+    var i;
+    for (i = 0; i < x.length; i++) {
+         x[i].setAttribute("open", "true");
+}
+    </script>
 </head>
 
 <body class="journalTheme" style="">
@@ -1295,9 +1305,3 @@ a, a:visited {color: #660000;text-decoration:none;}
 <div class="layout-wrapper">
 
     <div class="layout-main" role="main">
-        %s
-    </div>
-</div>
-
-</body>
-</html>
