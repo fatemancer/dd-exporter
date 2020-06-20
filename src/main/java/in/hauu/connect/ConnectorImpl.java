@@ -13,10 +13,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.Charset;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.BiFunction;
 
 @Slf4j
 public class ConnectorImpl implements Connector {
@@ -26,11 +24,11 @@ public class ConnectorImpl implements Connector {
     private static final String HOST = "http://darkdiary.ru";
     private static final String LOGIN_API = HOST + "/auth/login";
 
-    private static final Map<String, HttpClient> cachedHttpClient = new HashMap<>();
+    protected static final Map<String, HttpClient> cachedHttpClient = new HashMap<>();
     private final CacheHandler cacheHandler;
 
-    public ConnectorImpl(String user) {
-        this.cacheHandler = new CacheHandler(user);
+    public ConnectorImpl(CacheHandler cacheHandler) {
+        this.cacheHandler = cacheHandler;
     }
 
     @Override
@@ -48,65 +46,66 @@ public class ConnectorImpl implements Connector {
                 .header("Referer", "http://darkdiary.ru/")
                 .uri(URI.create(LOGIN_API)).build();
 
-        // inject cookies
-        HttpResponse<String> send = client.send(build, this::firstHandle);
-        cachedHttpClient.put(user, client);
+        injectCookies(user, client, build);
 
         Parser parser = new Parser();
-        HashMap<String, String> meta = parser.getMeta(retrievePages(user, 2, client).get(0));
+        HashMap<String, String> meta = parser.getMeta(retrievePages(user, 2).get(0));
         int lastIndex = Integer.parseInt(meta.getOrDefault("lastDiaryIndex", "0"));
-        lastIndex = 5;
+        lastIndex = 3;
         log.info("Last index: {}", lastIndex);
-        return parser.parse(user, meta, retrievePages(user, lastIndex, client));
+        return parser.parse(user, meta, retrievePages(user, lastIndex));
     }
 
-    private List<String> retrievePages(String user, int lastPage, HttpClient client) {
-        var strings = new ArrayList<String>();
+    protected void injectCookies(
+            String user,
+            HttpClient client,
+            HttpRequest build
+    ) throws IOException, InterruptedException {
+        client.send(build, this::firstHandle);
+        cachedHttpClient.put(user, client);
+    }
+
+    private List<String> retrievePages(String user, int lastPage) {
         ProgressBar bar = new ProgressBar("Выкачиваем страницы", lastPage);
-        for (int i = 1; i <= lastPage; i++) {
+        var strings = new ArrayList<String>();
+        for (int i = 0; i < lastPage; i++) {
             bar.next();
-            // 'effectively final' of i prevents using concise optional style
-            if (cacheHandler.getPage(user, i).isPresent()) {
-                strings.add(cacheHandler.getPage(user, i).get());
-            } else {
-                String url = String.format(PAGE_TEMPLATE, user, i);
-                int retries = 0;
-                try {
-                    tryConnect(client, url, strings, i, retries);
-                } catch (Exception e) {
-                    // hand-made craft retry policy
-                    retries++;
-                    if (retries > 3) {
-                        log.error("Failed at page %s, trying to save what is left");
-                        return strings;
-                    }
-                    tryConnect(client, url, strings, i, retries);
-                }
-            }
+            strings.add(wrapCache(user, i));
         }
         return strings;
     }
 
+    private String wrapCache(Integer eid, String url, HttpClient client) {
+        String seid = String.valueOf(eid);
+        return cacheHandler.getPost(seid).orElseGet(() -> {
+            String data = retry(this::tryConnect, client, url);
+            cacheHandler.putPost(seid, data);
+            return data;
+        });
+    }
 
-    private String retrieveCommentsBlock(String url, Integer eid, HttpClient client) {
-        var singletonList = new ArrayList<String>();
+    private String wrapCache(String user, int i) {
+        HttpClient httpClient = cachedHttpClient.get(user);
+        return cacheHandler.getPage(user, i).orElseGet(() -> {
+            String url = String.format(PAGE_TEMPLATE, user, i);
+            String data = retry(this::tryConnect, httpClient, url);
+            cacheHandler.putPage(user, i, data);
+            return data;
+        });
+    }
+
+    protected String retry(
+            BiFunction<HttpClient, String, HttpResponse<String>> function,
+            HttpClient httpClient,
+            String url
+    ) {
+        HttpResponse<String> response;
         int retries = 0;
-        try {
-            if (cacheHandler.getPost(String.valueOf(eid)).isPresent()) {
-                singletonList.add(cacheHandler.getPost(String.valueOf(eid)).get());
-            } else {
-                tryConnect(client, url, singletonList, -1, retries);
-            }
-        } catch (Exception e) {
-            // hand-made craft retry policy
+        do {
+            response = function.apply(httpClient, url);
             retries++;
-            if (retries > 3) {
-                log.error("Failed at page %s, trying to save what is left");
-                return singletonList.get(0);
-            }
-            tryConnect(client, url, singletonList, -1, retries);
-        }
-        return singletonList.get(0);
+        } while (response.statusCode() != 200 || retries != 3);
+        return response.body();
     }
 
     @Override
@@ -121,19 +120,18 @@ public class ConnectorImpl implements Connector {
                 .forEach(r -> {
                             bar.next();
                             String recordUrl = String.format(RECORD_TEMPLATE, diary.getLogin(), r.getEid());
-                            String commentsBlock = retrieveCommentsBlock(recordUrl, r.getEid(), cachedClient);
+                            String commentsBlock = wrapCache(r.getEid(), recordUrl, cachedClient);
                             new Parser().injectComments(r, commentsBlock);
                         }
                 );
     }
 
-    private void tryConnect(HttpClient client, String url, ArrayList<String> strings, int curIndex, int retry) {
+    private HttpResponse<String> tryConnect(HttpClient client, String url) {
         try {
-            HttpResponse<String> send = client.send(getRequest(url), (r) -> handle(r, curIndex, retry));
-            strings.add(send.body());
-            Thread.sleep(800);
+            return client.send(getRequest(url), (r) -> handle(r, url));
         } catch (IOException | InterruptedException e) {
-            log.error("Error, will retry if possible: ", e);
+            log.error("Error, function caller will possibly retry: ", e);
+            return null;
         }
     }
 
@@ -155,11 +153,10 @@ public class ConnectorImpl implements Connector {
 
     private HttpResponse.BodySubscriber<String> handle(
             HttpResponse.ResponseInfo responseInfo,
-            int curIndex,
-            int retry
+            String url
     ) {
         if (responseInfo.statusCode() != 200) {
-            log.info(String.format("Code %s, page %s, iteration %s", responseInfo.statusCode(), curIndex, retry));
+            log.info(String.format("Code %s, page %s", responseInfo.statusCode(), url));
         }
         return HttpResponse.BodySubscribers.ofString(Charset.defaultCharset());
     }

@@ -1,8 +1,6 @@
 package in.hauu;
 
-import in.hauu.connect.Connector;
-import in.hauu.connect.ConnectorImpl;
-import in.hauu.connect.MockConnector;
+import in.hauu.connect.*;
 import in.hauu.diary.Diary;
 import in.hauu.writer.DiaryWriter;
 import in.hauu.writer.Formatter;
@@ -12,6 +10,9 @@ import lombok.SneakyThrows;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,31 +23,45 @@ class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
         UserFileSystem.init();
         Formatter.checkIfExists();
-        Connector connector = provideConnector(args);
-        Diary contents  = connector.retrieveDiary(params.get("login"), params.get("password"));
-        // no need to check each record... only enriching those with comments > 0
-        connector.enrich(contents);
-        DiaryWriter diaryWriter = new DiaryWriter();
-        diaryWriter.writeDiary(contents);
+        fillArgs(args);
+        CacheHandler cacheHandler = new CacheHandler(params.get("login"));
+        Connector connector = provideConnector(cacheHandler);
+        try {
+            Diary contents  = connector.retrieveDiary(params.get("login"), params.get("password"));
+            // no need to check each record... only enriching those with comments > 0
+            connector.enrich(contents);
+            DiaryWriter diaryWriter = new DiaryWriter();
+            diaryWriter.writeDiary(contents);
+        } catch (Exception e) {
+            System.err.println("Что-то пошло не так. Детали в файле ~/dd-export-err.log \n" + e);
+            Files.write(UserFileSystem.getErrFile(),
+                    Arrays.toString(e.getStackTrace()).getBytes(), StandardOpenOption.CREATE);
+            cacheHandler.sync();
+        }
     }
 
     @SneakyThrows
-    private static Connector provideConnector(String[] args) {
+    private static void fillArgs(String[] args) {
         if (args.length == 3) {
             params.put("login", args[0]);
             params.put("password", args[1]);
-            if (args[2].equals("true")) {
-                return new ConnectorImpl();
-            } else {
-                return new MockConnector();
-            }
+            params.put("real-connect", args[2]);
         } else {
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
             System.out.print("Enter username:");
             params.put("login", br.readLine());
             System.out.print("Enter password:");
             params.put("password", br.readLine());
-            return new ConnectorImpl();
+            params.put("real-connect", "true");
+        }
+    }
+
+    @SneakyThrows
+    private static Connector provideConnector(CacheHandler cacheHandler) {
+        if (params.get("real-connect").equals("true")) {
+            return new ConnectorImpl(cacheHandler);
+        } else {
+            return new LocalConnectorImpl(cacheHandler);
         }
     }
 

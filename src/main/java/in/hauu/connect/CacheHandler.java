@@ -5,8 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -15,10 +17,11 @@ public class CacheHandler {
 
     private static final Map<PostKey, Optional<String>> cachedPostData = new HashMap<>();
     private static final Map<PageKey, Optional<String>> cachedPageData = new HashMap<>();
+    private final Path cacheFolder;
 
     public CacheHandler(String user) {
         Path home = UserFileSystem.getHome();
-        Path cacheFolder = Path.of(home.toString(), "tmp");
+        cacheFolder = Path.of(home.toString(), "tmp");
         File file = new File(cacheFolder.toUri());
         File[] files = file.listFiles();
         putFilesToCache(files);
@@ -37,6 +40,36 @@ public class CacheHandler {
         var data = cachedPostData.getOrDefault(new PostKey(eid), Optional.empty());
         data.ifPresent((s) -> log.info("Returned data for entry eid={}", eid));
         return data;
+    }
+
+    public void sync() {
+        cachedPageData.entrySet().stream().filter(e -> e.getValue().isPresent()).forEach((entry) -> {
+                    String file = String.format(
+                            "%s/%s@@%s.page",
+                            cacheFolder.toString(),
+                            entry.getKey().login,
+                            entry.getKey().pageNumber
+                    );
+                    try {
+                        Files.write(Path.of(file), entry.getValue().get().getBytes(), StandardOpenOption.CREATE);
+                    } catch (IOException e) {
+                        log.error("Failed to write cache entry for {}", entry.getKey(), e);
+                    }
+                }
+        );
+        cachedPostData.entrySet().stream().filter(e -> e.getValue().isPresent()).forEach((entry) -> {
+                    String file = String.format(
+                            "%s/%s.post",
+                            cacheFolder.toString(),
+                            entry.getKey().eid
+                    );
+                    try {
+                        Files.write(Path.of(file), entry.getValue().get().getBytes(), StandardOpenOption.CREATE);
+                    } catch (IOException e) {
+                        log.error("Failed to write cache entry for {}", entry.getKey(), e);
+                    }
+                }
+        );
     }
 
     private void putFilesToCache(File[] files) {
@@ -80,6 +113,14 @@ public class CacheHandler {
 
     private PostKey toPostKey(File k) {
         return new PostKey(k.getName());
+    }
+
+    public void putPage(String user, int page, String data) {
+        cachedPageData.put(new PageKey(user, String.valueOf(page)), Optional.of(data));
+    }
+
+    public void putPost(String eid, String data) {
+        cachedPostData.put(new PostKey(eid), Optional.of(data));
     }
 
     @AllArgsConstructor

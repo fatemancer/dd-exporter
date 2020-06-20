@@ -23,6 +23,12 @@ public class UserFileSystem {
         return dd;
     }
 
+    public static Path getErrFile() {
+        String home = System.getProperty("user.home");
+        return Path.of(home, "dd-export-error.log");
+
+    }
+
     private static void initCacheFolder(Path dd) {
         Path tmp = Path.of(dd.toString(), "tmp");
         if (!new File(tmp.toString()).exists()) {
