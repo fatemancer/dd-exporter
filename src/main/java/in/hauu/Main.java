@@ -36,6 +36,9 @@ class Main {
                     "Готово. Файлик можно забрать по адресу: %s",
                     UserFileSystem.getDiary(params.get("login"))
             ));
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            System.out.println("Нажмите Enter для выхода");
+            br.readLine();
         } catch (Exception e) {
             System.err.println("Что-то пошло не так. Детали в файле ~/dd-export-err.log \n" + e);
             Files.write(UserFileSystem.getErrFile(),
