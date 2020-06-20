@@ -2,6 +2,7 @@ package in.hauu.connect;
 
 import in.hauu.writer.UserFileSystem;
 import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -32,13 +33,13 @@ public class CacheHandler {
                 new PageKey(user, String.valueOf(pageNumber)),
                 Optional.empty()
         );
-        data.ifPresent((s) -> log.info("Returned data for page {} of user {} from cache", pageNumber, user));
+        //data.ifPresent((s) -> log.info("Returned data for page {} of user {} from cache", pageNumber, user));
         return data;
     }
 
     public Optional<String> getPost(String eid) {
         var data = cachedPostData.getOrDefault(new PostKey(eid), Optional.empty());
-        data.ifPresent((s) -> log.info("Returned data for entry eid={}", eid));
+        //data.ifPresent((s) -> log.info("Returned data for entry eid={}", eid));
         return data;
     }
 
@@ -96,7 +97,7 @@ public class CacheHandler {
         try {
             String name = file.getName();
             String[] params = name.split("@@");
-            return new PageKey(params[0], params[1]);
+            return new PageKey(params[0], params[1].split(".page")[0]);
         } catch (Exception e) {
             return null;
         }
@@ -112,7 +113,7 @@ public class CacheHandler {
     }
 
     private PostKey toPostKey(File k) {
-        return new PostKey(k.getName());
+        return new PostKey(k.getName().split(".post")[0]);
     }
 
     public void putPage(String user, int page, String data) {
@@ -124,11 +125,13 @@ public class CacheHandler {
     }
 
     @AllArgsConstructor
+    @EqualsAndHashCode
     private static class PostKey {
         String eid;
     }
 
     @AllArgsConstructor
+    @EqualsAndHashCode
     private static class PageKey {
         String login;
         String pageNumber;

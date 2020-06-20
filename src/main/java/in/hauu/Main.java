@@ -27,15 +27,21 @@ class Main {
         CacheHandler cacheHandler = new CacheHandler(params.get("login"));
         Connector connector = provideConnector(cacheHandler);
         try {
-            Diary contents  = connector.retrieveDiary(params.get("login"), params.get("password"));
+            Diary contents = connector.retrieveDiary(params.get("login"), params.get("password"));
             // no need to check each record... only enriching those with comments > 0
             connector.enrich(contents);
             DiaryWriter diaryWriter = new DiaryWriter();
             diaryWriter.writeDiary(contents);
+            System.out.println(String.format(
+                    "Готово. Файлик можно забрать по адресу: %s",
+                    UserFileSystem.getDiary(params.get("login"))
+            ));
         } catch (Exception e) {
             System.err.println("Что-то пошло не так. Детали в файле ~/dd-export-err.log \n" + e);
             Files.write(UserFileSystem.getErrFile(),
-                    Arrays.toString(e.getStackTrace()).getBytes(), StandardOpenOption.CREATE);
+                    Arrays.toString(e.getStackTrace()).getBytes(), StandardOpenOption.CREATE
+            );
+        } finally {
             cacheHandler.sync();
         }
     }
@@ -50,8 +56,9 @@ class Main {
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
             System.out.print("Enter username:");
             params.put("login", br.readLine());
-            System.out.print("Enter password:");
-            params.put("password", br.readLine());
+            PasswordManager passwordManager = new PasswordManager();
+            String password = passwordManager.readPassword("Enter password: ");
+            params.put("password", password);
             params.put("real-connect", "true");
         }
     }

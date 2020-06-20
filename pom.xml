@@ -15,6 +15,7 @@
                 <directory>src</directory>
                 <excludes>
                     <exclude>**/*.java</exclude>
+                    <exclude>**/*private*.html</exclude>
                 </excludes>
             </resource>
         </resources>

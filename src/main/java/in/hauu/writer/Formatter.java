@@ -3,9 +3,6 @@ package in.hauu.writer;
 import in.hauu.diary.Comment;
 import in.hauu.diary.Diary;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,16 +18,12 @@ public class Formatter {
     private static String COMMENT_ITEM;
 
     static {
-        try {
-            HEAD = new String(Files.readAllBytes(Path.of("src/main/resources/head.html")));
-            TAIL = new String(Files.readAllBytes(Path.of("src/main/resources/tail.html")));
-            TEMPLATE_ARTICLE = new String(Files.readAllBytes(Path.of("src/main/resources/template.html")));
-            FOOTER = new String(Files.readAllBytes(Path.of("src/main/resources/footer_block.html")));
-            COMMENTS = new String(Files.readAllBytes(Path.of("src/main/resources/comment_block.html")));
-            COMMENT_ITEM = new String(Files.readAllBytes(Path.of("src/main/resources/comment_item_block.html")));
-        } catch (IOException e) {
-            throw new RuntimeException("No template files loaded", e);
-        }
+        HEAD = UserFileSystem.getResourceAsString("head.html");
+        TAIL = UserFileSystem.getResourceAsString("tail.html");
+        TEMPLATE_ARTICLE = UserFileSystem.getResourceAsString("template.html");
+        FOOTER = UserFileSystem.getResourceAsString("footer_block.html");
+        COMMENTS = UserFileSystem.getResourceAsString("comment_block.html");
+        COMMENT_ITEM = UserFileSystem.getResourceAsString("comment_item_block.html");
     }
 
     public static void checkIfExists() {
@@ -92,7 +85,6 @@ public class Formatter {
     }
 
     String getTail() {
-        return FOOTER;
+        return TAIL;
     }
-
 }

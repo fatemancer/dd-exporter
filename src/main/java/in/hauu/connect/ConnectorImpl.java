@@ -51,7 +51,6 @@ public class ConnectorImpl implements Connector {
         Parser parser = new Parser();
         HashMap<String, String> meta = parser.getMeta(retrievePages(user, 2).get(0));
         int lastIndex = Integer.parseInt(meta.getOrDefault("lastDiaryIndex", "0"));
-        lastIndex = 3;
         log.info("Last index: {}", lastIndex);
         return parser.parse(user, meta, retrievePages(user, lastIndex));
     }
@@ -68,7 +67,7 @@ public class ConnectorImpl implements Connector {
     private List<String> retrievePages(String user, int lastPage) {
         ProgressBar bar = new ProgressBar("Выкачиваем страницы", lastPage);
         var strings = new ArrayList<String>();
-        for (int i = 0; i < lastPage; i++) {
+        for (int i = 1; i <= lastPage; i++) {
             bar.next();
             strings.add(wrapCache(user, i));
         }

@@ -2,8 +2,9 @@ package in.hauu.writer;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.File;
+import java.io.*;
 import java.nio.file.Path;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class UserFileSystem {
@@ -33,6 +34,26 @@ public class UserFileSystem {
         Path tmp = Path.of(dd.toString(), "tmp");
         if (!new File(tmp.toString()).exists()) {
             new File(tmp.toString()).mkdir();
+        }
+    }
+
+    public static String getResourceAsString(String filename) {
+        try (InputStream resourceAsStream = UserFileSystem.class.getResourceAsStream("/main/resources/" + filename)) {
+            // small files, no need to buffer
+            return new BufferedReader(new InputStreamReader(resourceAsStream)).lines().collect(Collectors.joining());
+        } catch (IOException e) {
+            throw new RuntimeException(String.format("Failed to read resource %s", filename));
+        }
+    }
+
+    public static String getDiary(String login) {
+        String home = System.getProperty("user.home");
+        Path dd = Path.of(home, "dd-export");
+        try {
+            return Path.of(dd.toString(), login + ".html").toRealPath().toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return "";
         }
     }
 }
