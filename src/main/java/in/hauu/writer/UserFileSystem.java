@@ -12,7 +12,7 @@ public class UserFileSystem {
         log.info("User folder: {}", getHome());
     }
 
-    static Path getHome() {
+    public static Path getHome() {
         String home = System.getProperty("user.home");
         Path dd = Path.of(home, "dd-export");
         File file = new File(dd.toString());

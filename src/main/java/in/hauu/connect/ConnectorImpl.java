@@ -27,7 +27,11 @@ public class ConnectorImpl implements Connector {
     private static final String LOGIN_API = HOST + "/auth/login";
 
     private static final Map<String, HttpClient> cachedHttpClient = new HashMap<>();
-    private static final Map<String, String> cachedPostData = new HashMap<>();
+    private final CacheHandler cacheHandler;
+
+    public ConnectorImpl(String user) {
+        this.cacheHandler = new CacheHandler(user);
+    }
 
     @Override
     public Diary retrieveDiary(String user, String password) throws IOException, InterruptedException {
@@ -61,29 +65,38 @@ public class ConnectorImpl implements Connector {
         ProgressBar bar = new ProgressBar("Выкачиваем страницы", lastPage);
         for (int i = 1; i <= lastPage; i++) {
             bar.next();
-            bar.show();
-            String url = String.format(PAGE_TEMPLATE, user, i);
-            int retries = 0;
-            try {
-                tryConnect(client, url, strings, i, retries);
-            } catch (Exception e) {
-                // hand-made craft retry policy
-                retries++;
-                if (retries > 3) {
-                    log.error("Failed at page %s, trying to save what is left");
-                    return strings;
+            // 'effectively final' of i prevents using concise optional style
+            if (cacheHandler.getPage(user, i).isPresent()) {
+                strings.add(cacheHandler.getPage(user, i).get());
+            } else {
+                String url = String.format(PAGE_TEMPLATE, user, i);
+                int retries = 0;
+                try {
+                    tryConnect(client, url, strings, i, retries);
+                } catch (Exception e) {
+                    // hand-made craft retry policy
+                    retries++;
+                    if (retries > 3) {
+                        log.error("Failed at page %s, trying to save what is left");
+                        return strings;
+                    }
+                    tryConnect(client, url, strings, i, retries);
                 }
-                tryConnect(client, url, strings, i, retries);
             }
         }
         return strings;
     }
 
+
     private String retrieveCommentsBlock(String url, Integer eid, HttpClient client) {
         var singletonList = new ArrayList<String>();
         int retries = 0;
         try {
-            tryConnect(client, url, singletonList, -1, retries);
+            if (cacheHandler.getPost(String.valueOf(eid)).isPresent()) {
+                singletonList.add(cacheHandler.getPost(String.valueOf(eid)).get());
+            } else {
+                tryConnect(client, url, singletonList, -1, retries);
+            }
         } catch (Exception e) {
             // hand-made craft retry policy
             retries++;
@@ -107,7 +120,6 @@ public class ConnectorImpl implements Connector {
                 .filter(r -> r.getEnrichment() == Record.Enrichment.NEEDED)
                 .forEach(r -> {
                             bar.next();
-                            bar.show();
                             String recordUrl = String.format(RECORD_TEMPLATE, diary.getLogin(), r.getEid());
                             String commentsBlock = retrieveCommentsBlock(recordUrl, r.getEid(), cachedClient);
                             new Parser().injectComments(r, commentsBlock);
@@ -155,5 +167,4 @@ public class ConnectorImpl implements Connector {
     private HttpRequest.BodyPublisher authParams(String user, String password) {
         return HttpRequest.BodyPublishers.ofString(String.format("login=%s&password=%s", user, password));
     }
-
 }

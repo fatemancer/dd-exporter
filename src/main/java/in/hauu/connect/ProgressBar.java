@@ -18,14 +18,20 @@ public class ProgressBar {
     }
 
     public void next() {
-        current++;
+        if (current < max) {
+            current++;
+        }
         if (current / ((double) max) / (1.0 / 78) > step) {
             step++;
-            bar = String.format("%s, %s/%s: [%s%s]", name, current, max, "X".repeat(step), ".".repeat(78-step));
+            if (step >= 78) {
+                step = 78;
+            }
         }
+        bar = String.format("%s, %s/%s: [%s%s]", name, current, max, "X".repeat(step), ".".repeat(78-step));
+        show();
     }
 
-    public void show() {
+    private void show() {
         System.err.print(bar + "\r");
     }
 }
