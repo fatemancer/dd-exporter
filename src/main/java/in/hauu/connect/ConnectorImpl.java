@@ -68,7 +68,7 @@ public class ConnectorImpl implements Connector {
         ProgressBar bar = new ProgressBar("Выкачиваем страницы", lastPage);
         var strings = new ArrayList<String>();
         for (int i = 1; i <= lastPage; i++) {
-            bar.next();
+            bar.nextPage();
             strings.add(wrapCache(user, i));
         }
         return strings;
@@ -117,7 +117,7 @@ public class ConnectorImpl implements Connector {
         diary.getFlatRecords()
                 .filter(r -> r.getEnrichment() == Record.Enrichment.NEEDED)
                 .forEach(r -> {
-                            bar.next();
+                            bar.nextEntry();
                             String recordUrl = String.format(RECORD_TEMPLATE, diary.getLogin(), r.getEid());
                             String commentsBlock = wrapCache(r.getEid(), recordUrl, cachedClient);
                             new Parser().injectComments(r, commentsBlock);

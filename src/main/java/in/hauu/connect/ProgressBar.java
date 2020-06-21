@@ -1,5 +1,7 @@
 package in.hauu.connect;
 
+import in.hauu.gui.GuiManager;
+
 import java.util.List;
 
 public class ProgressBar {
@@ -15,8 +17,15 @@ public class ProgressBar {
         this.current = 0;
     }
 
-    public void next() {
+    public void nextEntry() {
         current++;
         System.err.print(String.format("%s: %s/%s %s%s", name, current, max, bar.get(current % 3), "\r"));
+        GuiManager.diaryExporter.moveCommentBar(current, max);
+    }
+
+    public void nextPage() {
+        current++;
+        System.err.print(String.format("%s: %s/%s %s%s", name, current, max, bar.get(current % 3), "\r"));
+        GuiManager.diaryExporter.movePostBar(current, max);
     }
 }
